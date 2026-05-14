@@ -1,0 +1,53 @@
+// Prisma schema — three-preference voting simulation
+// The schema deliberately keeps votes aggregatable (no PII) so it can be
+// exposed on a public demo without privacy implications.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Party {
+  id          String   @id
+  shortName   String
+  fullName    String
+  color       String
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  preferences VotePreference[]
+
+  @@index([active, order])
+  @@map("parties")
+}
+
+model VoteSession {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  submittedAt DateTime?
+
+  preferences VotePreference[]
+
+  @@index([submittedAt])
+  @@map("vote_sessions")
+}
+
+model VotePreference {
+  id            String   @id @default(cuid())
+  voteSessionId String
+  partyId       String
+  rank          Int      // 1 = Erststimme, 2 = Zweitstimme, 3 = Drittstimme
+
+  voteSession VoteSession @relation(fields: [voteSessionId], references: [id], onDelete: Cascade)
+  party       Party       @relation(fields: [partyId], references: [id])
+
+  @@unique([voteSessionId, rank])
+  @@index([partyId, rank])
+  @@map("vote_preferences")
+}
